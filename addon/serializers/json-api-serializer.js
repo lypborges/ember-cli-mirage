@@ -1,11 +1,10 @@
-import Serializer from '../serializer';
-import { dasherize, pluralize, camelize } from '../utils/inflector';
-import _get from 'lodash/get';
-import _ from 'lodash';
-import assert from 'ember-cli-mirage/assert';
+import Serializer from "../serializer";
+import { dasherize, pluralize, camelize } from "../utils/inflector";
+import _get from "lodash/get";
+import _ from "lodash";
+import assert from "ember-cli-mirage/assert";
 
 const JSONAPISerializer = Serializer.extend({
-
   keyForModel(modelName) {
     return dasherize(modelName);
   },
@@ -29,20 +28,20 @@ const JSONAPISerializer = Serializer.extend({
     let hashWithRoot = { data: resourceHash };
     let addToIncludes = this.getAddToIncludesForResource(resource);
 
-    return [ hashWithRoot, addToIncludes ];
+    return [hashWithRoot, addToIncludes];
   },
 
   getHashForIncludedResource(resource) {
     let serializer = this.serializerFor(resource.modelName);
     let hash = serializer.getHashForResource(resource);
-    let hashWithRoot = { included: (this.isModel(resource) ? [ hash ] : hash) };
+    let hashWithRoot = { included: this.isModel(resource) ? [hash] : hash };
     let addToIncludes = [];
 
     if (!this.hasQueryParamIncludes()) {
       addToIncludes = this.getAddToIncludesForResource(resource);
     }
 
-    return [ hashWithRoot, addToIncludes ];
+    return [hashWithRoot, addToIncludes];
   },
 
   getHashForResource(resource) {
@@ -51,7 +50,7 @@ const JSONAPISerializer = Serializer.extend({
     if (this.isModel(resource)) {
       hash = this._getResourceObjectForModel(resource);
     } else {
-      hash = resource.models.map((m) => this._getResourceObjectForModel(m));
+      hash = resource.models.map(m => this._getResourceObjectForModel(m));
     }
 
     return hash;
@@ -64,21 +63,27 @@ const JSONAPISerializer = Serializer.extend({
     let relationshipPaths;
 
     if (this.hasQueryParamIncludes()) {
-      relationshipPaths = this.request.queryParams.include.split(',');
+      relationshipPaths = this.request.queryParams.include.split(",");
     } else {
       let serializer = this.serializerFor(resource.modelName);
       relationshipPaths = serializer.getKeysForIncluded();
     }
 
-    return this.getAddToIncludesForResourceAndPaths(resource, relationshipPaths);
+    return this.getAddToIncludesForResourceAndPaths(
+      resource,
+      relationshipPaths
+    );
   },
 
   getAddToIncludesForResourceAndPaths(resource, relationshipPaths) {
     let includes = [];
 
-    relationshipPaths.forEach((path) => {
-      let relationshipNames = path.split('.');
-      let newIncludes = this.getIncludesForResourceAndPath(resource, ...relationshipNames);
+    relationshipPaths.forEach(path => {
+      let relationshipNames = path.split(".");
+      let newIncludes = this.getIncludesForResourceAndPath(
+        resource,
+        ...relationshipNames
+      );
       includes.push(newIncludes);
     });
 
@@ -98,13 +103,12 @@ const JSONAPISerializer = Serializer.extend({
       let relationship = resource[nameForCurrentResource];
 
       if (this.isModel(relationship)) {
-        modelsToAdd = [ relationship ];
+        modelsToAdd = [relationship];
       } else if (this.isCollection(relationship)) {
         modelsToAdd = relationship.models;
       }
-
     } else {
-      resource.models.forEach((model) => {
+      resource.models.forEach(model => {
         let relationship = model[nameForCurrentResource];
 
         if (this.isModel(relationship)) {
@@ -118,8 +122,10 @@ const JSONAPISerializer = Serializer.extend({
     includes = includes.concat(modelsToAdd);
 
     if (names.length) {
-      modelsToAdd.forEach((model) => {
-        includes = includes.concat(this.getIncludesForResourceAndPath(model, ...names));
+      modelsToAdd.forEach(model => {
+        includes = includes.concat(
+          this.getIncludesForResourceAndPath(model, ...names)
+        );
       });
     }
 
@@ -151,7 +157,10 @@ const JSONAPISerializer = Serializer.extend({
         relationshipHash.links = links[key];
       }
 
-      if (this.alwaysIncludeLinkageData || this._relationshipIsIncludedForModel(key, model)) {
+      if (
+        this.alwaysIncludeLinkageData ||
+        this._relationshipIsIncludedForModel(key, model)
+      ) {
         let data = null;
         if (this.isModel(relationship)) {
           data = {
@@ -159,7 +168,7 @@ const JSONAPISerializer = Serializer.extend({
             id: relationship.id
           };
         } else if (this.isCollection(relationship)) {
-          data = relationship.models.map((model) => {
+          data = relationship.models.map(model => {
             return {
               type: this.typeKeyForModel(model),
               id: model.id
@@ -209,14 +218,18 @@ const JSONAPISerializer = Serializer.extend({
       if (graph.data[graphKey]) {
         graphResource = graph.data[graphKey];
 
-      // Check includes
+        // Check includes
       } else if (graph.included[dasherize(pluralize(model.modelName))]) {
-        graphResource = graph.included[dasherize(pluralize(model.modelName))][graphKey];
+        graphResource =
+          graph.included[dasherize(pluralize(model.modelName))][graphKey];
       }
 
       // If the model's in the graph, check if relationshipKey should be included
-      return graphResource && graphResource.relationships && graphResource.relationships.hasOwnProperty(dasherize(relationshipKey));
-
+      return (
+        graphResource &&
+        graphResource.relationships &&
+        graphResource.relationships.hasOwnProperty(dasherize(relationshipKey))
+      );
     } else {
       let relationshipPaths = this.getKeysForIncluded();
 
@@ -241,7 +254,6 @@ const JSONAPISerializer = Serializer.extend({
       graph.data[primaryResourceKey] = {};
 
       this._addPrimaryModelToRequestedIncludesGraph(graph, primaryResource);
-
     } else if (this.isCollection(primaryResource)) {
       primaryResource.models.forEach(model => {
         let primaryResourceKey = this._graphKeyForModel(model);
@@ -260,18 +272,26 @@ const JSONAPISerializer = Serializer.extend({
     if (this.hasQueryParamIncludes()) {
       let graphKey = this._graphKeyForModel(model);
       let queryParamIncludes = this.getQueryParamIncludes();
+      queryParamIncludes
+        .replace(/'/g, "")
+        .split(",")
+        .forEach(includesPath => {
+          // includesPath is post.comments, for example
+          graph.data[graphKey].relationships =
+            graph.data[graphKey].relationships || {};
 
-      queryParamIncludes.split(',')
-        .forEach(includesPath => { // includesPath is post.comments, for example
-          graph.data[graphKey].relationships = graph.data[graphKey].relationships || {};
-
-          let relationshipKeys = includesPath.split('.');
+          let relationshipKeys = includesPath.split(".");
           let relationshipKey = relationshipKeys[0];
           let graphRelationshipKey = dasherize(relationshipKey);
           let normalizedRelationshipKey = camelize(relationshipKey);
-          let hasAssociation = model.associationKeys.includes(normalizedRelationshipKey);
+          let hasAssociation = model.associationKeys.includes(
+            normalizedRelationshipKey
+          );
 
-          assert(hasAssociation, `You tried to include "${relationshipKey}" with ${model} but no association named "${normalizedRelationshipKey}" is defined on the model.`);
+          assert(
+            hasAssociation,
+            `You tried to include "${relationshipKey}" with ${model} but no association named "${normalizedRelationshipKey}" is defined on the model.`
+          );
 
           let relationship = model[normalizedRelationshipKey];
           let relationshipData;
@@ -284,10 +304,16 @@ const JSONAPISerializer = Serializer.extend({
             relationshipData = null;
           }
 
-          graph.data[graphKey].relationships[graphRelationshipKey] = relationshipData;
+          graph.data[graphKey].relationships[
+            graphRelationshipKey
+          ] = relationshipData;
 
           if (relationship) {
-            this._addResourceToRequestedIncludesGraph(graph, relationship, relationshipKeys.slice(1));
+            this._addResourceToRequestedIncludesGraph(
+              graph,
+              relationship,
+              relationshipKeys.slice(1)
+            );
           }
         });
     }
@@ -296,7 +322,7 @@ const JSONAPISerializer = Serializer.extend({
   _addResourceToRequestedIncludesGraph(graph, resource, relationshipNames) {
     graph.included = graph.included || {};
 
-    let models = this.isCollection(resource) ? resource.models : [ resource ];
+    let models = this.isCollection(resource) ? resource.models : [resource];
 
     models.forEach(model => {
       let collectionName = dasherize(pluralize(model.modelName));
@@ -309,18 +335,32 @@ const JSONAPISerializer = Serializer.extend({
   _addModelToRequestedIncludesGraph(graph, model, relationshipNames) {
     let collectionName = dasherize(pluralize(model.modelName));
     let resourceKey = this._graphKeyForModel(model);
-    graph.included[collectionName][resourceKey] = graph.included[collectionName][resourceKey] || {};
+    graph.included[collectionName][resourceKey] =
+      graph.included[collectionName][resourceKey] || {};
 
     if (relationshipNames.length) {
-      this._addResourceRelationshipsToRequestedIncludesGraph(graph, collectionName, resourceKey, model, relationshipNames);
+      this._addResourceRelationshipsToRequestedIncludesGraph(
+        graph,
+        collectionName,
+        resourceKey,
+        model,
+        relationshipNames
+      );
     }
   },
 
   /*
     Lot of the same logic here from _addPrimaryModelToRequestedIncludesGraph, could refactor & share
   */
-  _addResourceRelationshipsToRequestedIncludesGraph(graph, collectionName, resourceKey, model, relationshipNames) {
-    graph.included[collectionName][resourceKey].relationships = graph.included[collectionName][resourceKey].relationships || {};
+  _addResourceRelationshipsToRequestedIncludesGraph(
+    graph,
+    collectionName,
+    resourceKey,
+    model,
+    relationshipNames
+  ) {
+    graph.included[collectionName][resourceKey].relationships =
+      graph.included[collectionName][resourceKey].relationships || {};
 
     let relationshipName = relationshipNames[0];
     let relationship = model[camelize(relationshipName)];
@@ -331,10 +371,16 @@ const JSONAPISerializer = Serializer.extend({
     } else if (this.isCollection(relationship)) {
       relationshipData = relationship.models.map(this._graphKeyForModel);
     }
-    graph.included[collectionName][resourceKey].relationships[relationshipName] = relationshipData;
+    graph.included[collectionName][resourceKey].relationships[
+      relationshipName
+    ] = relationshipData;
 
     if (relationship) {
-      this._addResourceToRequestedIncludesGraph(graph, relationship, relationshipNames.slice(1));
+      this._addResourceToRequestedIncludesGraph(
+        graph,
+        relationship,
+        relationshipNames.slice(1)
+      );
     }
   },
 
@@ -343,7 +389,7 @@ const JSONAPISerializer = Serializer.extend({
   },
 
   getQueryParamIncludes() {
-    return (_get(this, 'request.queryParams.include'));
+    return _get(this, "request.queryParams.include");
   },
 
   hasQueryParamIncludes() {
@@ -355,9 +401,9 @@ const JSONAPISerializer = Serializer.extend({
   },
 
   getCoalescedIds(request) {
-    let ids = request.queryParams && request.queryParams['filter[id]'];
-    if (typeof ids === 'string') {
-      return ids.split(',');
+    let ids = request.queryParams && request.queryParams["filter[id]"];
+    if (typeof ids === "string") {
+      return ids.split(",");
     }
     return ids;
   }
