@@ -46,7 +46,7 @@
     "ember-inflector": "^2.0.0 || ^3.0.0",
     "ember-lodash": "^4.17.3",
     "fake-xml-http-request": "^2.0.0",
-    "faker": "^3.0.0",
+    "faker": "^4.0.0",
     "jsdom": "^11.12.0",
     "pretender": "2.1.0",
     "route-recognizer": "^0.3.4"
